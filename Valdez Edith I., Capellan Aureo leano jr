@@ -1,1 +1,201 @@
+const readline = require('readline');
+
+// Create readline interface
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout,
+});
+
+// Users that have been predefined for ticket personnel authentication
+const ticketPersonUsers = [
+  { username: "Valdez", password: "pintas" },
+  { username: "Capellan", password: "unggoy" },
+];
+
+// Set buses to their maximum capacity at first
+const buses = [
+  { name: "San Fernando", seats: Array(40).fill(null) },
+  { name: "Tagaytay", seats: Array(40).fill(null) },
+  { name: "Baguio", seats: Array(40).fill(null) },
+];
+
+// Find out if the user is a buyer or a seller.
+function mainMenu() {
+  rl.question("Are you a TICKET PERSON or CUSTOMER? ", (role) => {
+    if (role.toLowerCase() === 'ticket person') {
+      ticketPersonLogin();
+    } else if (role.toLowerCase() === 'customer') {
+      customerMenu();
+    } else {
+      console.log("Invalid choice.");
+      rl.close();
+    }
+  });
+}
+
+ // Ticket Person Login
+function ticketPersonLogin() {
+  rl.question("Enter username: ", (username) => {
+    rl.question("Enter password: ", (password) => {
+      const user = ticketPersonUsers.find(
+        (u) => u.username === username && u.password === password
+      );
+
+      if (user) {
+        console.log("Login successful.");
+        ticketPersonActions();
+      } else {
+        console.log("Invalid credentials.");
+        rl.close();
+      }
+    });
+  });
+}
+
+// Ticket Person actions menu
+function ticketPersonActions() {
+  console.log("\n1. Logout\n2. View Bus Reservations\n3. Manage a Bus");
+  rl.question("Choose an option: ", (choice) => {
+    switch (choice) {
+      case "1":
+        console.log("Logged out.");
+        rl.close();
+        break;
+      case "2":
+        viewReservations();
+        break;
+      case "3":
+        manageBus();
+        break;
+      default:
+        console.log("Invalid choice.");
+        rl.close();
+    }
+  });
+}
+
+// Examine bus reservations
+function viewReservations() {
+  buses.forEach((bus, index) => {
+    console.log(`\nBus ${index + 1}: ${bus.name}`);
+    bus.seats.forEach((seat, i) => {
+      console.log(`Seat ${i + 1}: ${seat || 'AVAILABLE'}`);
+    });
+  });
+  rl.question("\nType 'cancel' to return: ", () => {
+    ticketPersonActions();
+  });
+}
+
+// Control the bus menu
+function manageBus() {
+  console.log("\nWhich bus would you like to manage?");
+  buses.forEach((bus, index) => console.log(`${index + 1}. ${bus.name}`));
+  rl.question("Choose a bus number: ", (busNum) => {
+    const busIndex = parseInt(busNum) - 1;
+    if (busIndex >= 0 && busIndex < buses.length) {
+      rl.question("\nType 'add' to add a reservation or 'remove' to remove a reservation: ", (action) => {
+        if (action.toLowerCase() === 'add') {
+          addReservation(busIndex);
+        } else if (action.toLowerCase() === 'remove') {
+          removeReservation(busIndex);
+        } else {
+          console.log("Invalid action.");
+          ticketPersonActions();
+        }
+      });
+    } else {
+      console.log("Invalid bus number.");
+      ticketPersonActions();
+    }
+  });
+}
+
+//Include reservation logic
+function addReservation(busIndex) {
+  rl.question("Enter seat number to reserve: ", (seatNo) => {
+    const seatIndex = parseInt(seatNo) - 1;
+    if (buses[busIndex].seats[seatIndex] === null) {
+      rl.question("Enter customer name: ", (name) => {
+        buses[busIndex].seats[seatIndex] = name;
+        console.log(`Reservation successful for ${name} at seat ${seatNo}.`);
+        ticketPersonActions();
+      });
+    } else {
+      console.log("Seat is already reserved.");
+      ticketPersonActions();
+    }
+  });
+}
+
+// Take out the reservation logic
+function removeReservation(busIndex) {
+  rl.question("Enter seat number to remove reservation: ", (seatNo) => {
+    const seatIndex = parseInt(seatNo) - 1;
+    if (buses[busIndex].seats[seatIndex]) {
+      console.log(`Reservation for ${buses[busIndex].seats[seatIndex]} at seat ${seatNo} removed.`);
+      buses[busIndex].seats[seatIndex] = null;
+    } else {
+      console.log("No reservation found at that seat.");
+    }
+    ticketPersonActions();
+  });
+}
+
+// Menu for customers
+function customerMenu() {
+  console.log("\nAvailable Buses:");
+  buses.forEach((bus, index) => console.log(`${index + 1}. ${bus.name}`));
+  rl.question("\nChoose an option: (reserve/cancel/cancel reservation): ", (choice) => {
+    if (choice.toLowerCase() === 'reserve') reserve();
+    else if (choice.toLowerCase() === 'cancel reservation') cancelReservation();
+    else rl.close();
+  });
+}
+
+// the client books a reservation
+function reserve() {
+  rl.question("Choose bus to reserve: ", (busNum) => {
+    const busIndex = parseInt(busNum) - 1;
+    if (busIndex >= 0 && busIndex < buses.length) {
+      console.log(`Available seats for ${buses[busIndex].name}:`);
+      buses[busIndex].seats.forEach((seat, i) => {
+        if (seat === null) console.log(`Seat ${i + 1}: AVAILABLE`);
+      });
+      rl.question("Enter your name for reservation: ", (name) => {
+        const seatToReserve = buses[busIndex].seats.findIndex((seat) => seat === null);
+        if (seatToReserve >= 0) {
+          buses[busIndex].seats[seatToReserve] = name;
+          console.log(`Reservation successful for ${name} at seat ${seatToReserve + 1}`);
+        } else {
+          console.log("No available seats.");
+        }
+        customerMenu();
+      });
+    } else {
+      console.log("Invalid bus number.");
+      customerMenu();
+    }
+  });
+}
+
+// Logic for cancelling reservations
+function cancelReservation() {
+  rl.question("Which bus? ", (busNum) => {
+    const busIndex = parseInt(busNum) - 1;
+    rl.question("Enter your name to cancel reservation: ", (name) => {
+      const seatIndex = buses[busIndex].seats.findIndex((seat) => seat === name);
+      if (seatIndex >= 0) {
+        buses[busIndex].seats[seatIndex] = null;
+        console.log("Reservation successfully canceled.");
+      } else {
+        console.log("No reservation found.");
+      }
+      customerMenu();
+    });
+  });
+}
+
+// Launch the main menu
+mainMenu();
 
